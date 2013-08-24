@@ -1,24 +1,11 @@
 <launch>
 
-  <!-- Location of the cmvision color file -->
-  <param name="cmvision/color_file" type="string" 
-         value="$(find cmvision)/colors.txt" />
+  <node pkg="cmvision" type="cmvision" name="cmvision">
+    <remap from="image" to="nav_kinect/rgb/image_color" />
+    <param name="color_file" value="$(find asg2)/colors.txt" />
+    <param name="mean_shift_on" value="false" />	
+    <param name="spatial_radius_pix" value="0" />
+    <param name="color_radius_pix" value="0" />
+  </node>
 
-  <!-- Turn debug output on or off -->
-  <param name="cmvision/debug_on" type="bool" value="true"/>
-
-  <!-- Turn color calibration on or off -->
-  <param name="cmvision/color_cal_on" type="bool" value="false"/>
-
-  <!-- Enable Mean shift filtering -->
-  <param name="cmvision/mean_shift_on" type="bool" value="false"/>
-
-  <!-- Spatial bandwidth: Bigger = smoother image -->
-  <param name="cmvision/spatial_radius_pix" type="double" value="2.0"/>
-
-  <!-- Color bandwidth: Bigger = smoother image-->
-  <param name="cmvision/color_radius_pix" type="double" value="40.0"/>
-
-  <node name="cmvision" pkg="cmvision" type="cmvision" args="image:=wide_stereo/left/image_rect_color" 
-        output="screen" />
 </launch>
