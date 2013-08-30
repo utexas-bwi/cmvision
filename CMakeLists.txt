@@ -63,3 +63,7 @@ install(TARGETS cmvision colorgui
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
+install(FILES cmvision.launch colors.txt
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
