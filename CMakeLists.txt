@@ -22,7 +22,7 @@ generate_messages(
   std_msgs
 )
 
-catkin_package()
+catkin_package(CATKIN_DEPENDS message_runtime std_msgs)
 
 include_directories(${catkin_INCLUDE_DIRS})
 
@@ -38,6 +38,9 @@ add_executable(cmvision
 	src/conversions.c
 	src/cmvision_color_blob_finder.cpp
 	src/main.cpp
+)
+add_dependencies(cmvision
+  cmvision_gencpp
 )
 target_link_libraries(cmvision 
   ${catkin_LIBRARIES}
@@ -61,5 +64,9 @@ install(TARGETS cmvision colorgui
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(FILES cmvision.launch colors.txt
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
