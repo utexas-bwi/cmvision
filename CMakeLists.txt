@@ -39,6 +39,9 @@ add_executable(cmvision
 	src/cmvision_color_blob_finder.cpp
 	src/main.cpp
 )
+add_dependencies(cmvision
+  cmvision_gencpp
+)
 target_link_libraries(cmvision 
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
