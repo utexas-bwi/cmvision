@@ -243,7 +243,9 @@ void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
 
   int x, y;
   GetPosition(&x, &y);
-  SetSize(x,y, width_, height_+80);
+// Setting size is commented out because it breaks the gui:
+// Text boxes become invisible.
+//  SetSize(x,y, width_, height_+80);
 }
 
 
