@@ -118,7 +118,7 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 	ros::WallTime startt = ros::WallTime::now();
 
 	// Get the image as and RGB image
-        cv_bridge::CvImagePtr image = cv_bridge::toCvCopy(msg);
+        cv_bridge::CvImagePtr image = cv_bridge::toCvCopy(msg, "rgb8");
         cvImageRef = IplImage(image->image);
         cvImage = &cvImageRef;
         

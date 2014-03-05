@@ -161,7 +161,7 @@ void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
 	const sensor_msgs::Image img = *msg;
 
 	// Get the image as and RGB image
-        cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(msg);
+        cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(msg, "rgb8");
         cvImageRef = IplImage(image_ptr->image);
         cvImage = &cvImageRef;
 
