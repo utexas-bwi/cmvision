@@ -188,6 +188,7 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 	{
 		// Get the descriptive color
 		rgb c = vision_->getColorVisual(ch);
+		char* name = vision_->getColorName(ch);
 
 		// Grab the regions for this color
 		CMVision::region* r = NULL;
@@ -205,6 +206,7 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 				cvRectangle(cvImage, cvPoint(r->x1, r->y1), cvPoint(r->x2, r->y2), CV_RGB(c.red, c.green, c.blue));
 			}
 
+			blob_message_.blobs[blob_count_].name = name;
 			blob_message_.blobs[blob_count_].red = c.red;
 			blob_message_.blobs[blob_count_].green = c.green;
 			blob_message_.blobs[blob_count_].blue = c.blue;
