@@ -172,6 +172,11 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 	// Convert image to YUV color space
 	rgb2uyvy((unsigned char *) cvImage->imageData, uyvy_image_, width_ * height_);
 
+	if (debug_on_)
+	{
+		cvCvtColor(cvImage, cvImage, CV_RGB2BGR);
+	}
+
 	// Find the color blobs
 	if (!vision_->processFrame(reinterpret_cast<image_pixel*> (uyvy_image_)))
 	{
