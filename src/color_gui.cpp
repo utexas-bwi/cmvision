@@ -35,18 +35,6 @@
 #include "color_gui.h"
 #include "conversions.h"
 
-#define RGB2YUV(r, g, b, y, u, v)\
-  y = (306*r + 601*g + 117*b)  >> 10;\
-  u = ((-172*r - 340*g + 512*b) >> 10)  + 128;\
-  v = ((512*r - 429*g - 83*b) >> 10) + 128;\
-  y = y < 0 ? 0 : y;\
-  u = u < 0 ? 0 : u;\
-  v = v < 0 ? 0 : v;\
-  y = y > 255 ? 255 : y;\
-  u = u > 255 ? 255 : u;\
-  v = v > 255 ? 255 : v
-
-
 bool ColorGuiApp::OnInit()
 {
   char **local_argv = new char*[ argc ];
@@ -56,8 +44,8 @@ bool ColorGuiApp::OnInit()
   ros::init(argc, local_argv, "cmvision");
   ros::NodeHandle node_handle;
 
-	// Subscribe to an image stream
-	image_subscriber_ = node_handle.subscribe("image", 1, &ColorGuiApp::imageCB, this);
+  // Subscribe to an image stream
+  image_subscriber_ = node_handle.subscribe("image", 1, &ColorGuiApp::imageCB, this);
 
   frame_ = new ColorGuiFrame();
   frame_->Show(true);
@@ -137,10 +125,10 @@ ColorGuiFrame::ColorGuiFrame()
   width_ = 0;
   height_ = 0;
 
-	rgb_image_ = NULL;
-  uyvy_image_ = NULL;
+  rgb_image_ = NULL;
+  lab_image_ = NULL;
 
-	vision_ = new CMVision();
+  vision_ = new CMVision();
 
   image_panel_->Connect(wxEVT_LEFT_UP, wxMouseEventHandler(ColorGuiFrame::OnClick), NULL, this);
 
@@ -156,16 +144,16 @@ void ColorGuiFrame::OnQuit(wxCommandEvent &event)
 void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
 {
   IplImage cvImageRef, *cvImage;
-	CvSize size;
+  CvSize size;
 
-	const sensor_msgs::Image img = *msg;
+  const sensor_msgs::Image img = *msg;
 
-	// Get the image as and RGB image
-        cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(msg, "rgb8");
-        cvImageRef = IplImage(image_ptr->image);
-        cvImage = &cvImageRef;
+  // Get the image as and RGB image
+  cv_bridge::CvImagePtr image_ptr = cv_bridge::toCvCopy(msg, "rgb8");
+  cvImageRef = IplImage(image_ptr->image);
+  cvImage = &cvImageRef;
 
-	size = cvGetSize(cvImage);
+  size = cvGetSize(cvImage);
 
   if (width_ != size.width || height_ != size.height)
   {
@@ -173,9 +161,9 @@ void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
       delete[] rgb_image_;
     rgb_image_ = new unsigned char[size.width * size.height * 3];
 
-    if (!uyvy_image_)
-      delete[] uyvy_image_;
-    uyvy_image_ = new unsigned char[size.width * size.height * 2];
+    if (!lab_image_)
+      delete[] lab_image_;
+    lab_image_ = new unsigned char[size.width * size.height * 3];
 
     if (!(vision_->initialize(size.width, size.height)))
     {
@@ -191,14 +179,16 @@ void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
   memcpy(rgb_image_, cvImage->imageData, width_ * height_ * 3);
 
   // Convert image to YUV color space
-  rgb2uyvy(rgb_image_, uyvy_image_, width_ * height_);
+  cvCvtColor(cvImage, cvImage, CV_RGB2Lab);
+  
+  memcpy(lab_image_, cvImage->imageData, width_ * height_ * 3);
 
-	// Find the color blobs
-	if (!vision_->processFrame(reinterpret_cast<image_pixel*> (uyvy_image_)))
-	{
-		ROS_ERROR("Frame error.");
-		return;
-	}
+  // Find the color blobs
+  if (!vision_->processFrame(reinterpret_cast<image_pixel*> (cvImage->imageData)))
+  {
+	ROS_ERROR("Frame error.");
+	return;
+  }
 
   int xsrc = (scale_pos_x_*scale_) - scale_pos_x_;
   int ysrc = (scale_pos_y_*scale_) - scale_pos_y_;
@@ -251,14 +241,14 @@ void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
 
 void ColorGuiFrame::OnReset(wxCommandEvent &event)
 {
-	vision_->setThreshold(0, 0, 0, 0, 0, 0, 0);
+  vision_->setThreshold(0, 0, 0, 0, 0, 0, 0);
   rgbText_->SetValue(wxString::FromAscii(""));
   yuvText_->SetValue(wxString::FromAscii(""));
 }
 
 void ColorGuiFrame::OnClick(wxMouseEvent &event)
 {
-  int r, g, b, y, u, v;
+  int r, g, b, l, a, b2;
 
   int px = (event.m_x/scale_) + ((scale_pos_x_*scale_) - scale_pos_x_)/scale_;
   int py = (event.m_y/scale_) + ((scale_pos_y_*scale_) - scale_pos_y_)/scale_;
@@ -268,46 +258,49 @@ void ColorGuiFrame::OnClick(wxMouseEvent &event)
   b = rgb_image_[py * (width_ * 3) + px * 3 + 2];
 
   std::ostringstream stream1;
-  stream1 << "( " <<  r  << ", " << g << ", " << b << " )";
+  stream1 << "(" <<  r  << ", " << g << ", " << b << ")";
   rgbText_->SetValue(wxString::FromAscii(stream1.str().c_str()));
 
-  RGB2YUV(r, g, b, y, u, v);
+  l = lab_image_[py * (width_ * 3) + px * 3 + 0];
+  a = lab_image_[py * (width_ * 3) + px * 3 + 1];
+  b2 = lab_image_[py * (width_ * 3) + px * 3 + 2];
 
-  int y_low, y_high, u_low, u_high, v_low, v_high;
 
-  vision_->getThreshold(0, y_low, y_high, u_low, u_high, v_low, v_high);
+  int l_low, l_high, a_low, a_high, b_low, b_high;
 
-  if (y_low == 0 && y_high == 0)
+  vision_->getThreshold(0, l_low, l_high, a_low, a_high, b_low, b_high);
+
+  if (l_low == 0 && l_high == 0)
   {
-    y_low = y;
-    y_high = y;
+    l_low = l;
+    l_high = l;
   }
-  if (u_low == 0 && u_high == 0)
+  if (a_low == 0 && a_high == 0)
   {
-    u_low = u;
-    u_high = u;
+    a_low = a;
+    a_high = a;
   }
-  if (v_low == 0 && v_high == 0)
+  if (b_low == 0 && b_high == 0)
   {
-    v_low = v;
-    v_high = v;
+    b_low = b2;
+    b_high = b2;
   }
 
-  y_low = std::min(y, y_low);
-  y_high = std::max(y, y_high);
+  l_low = std::min(l, l_low);
+  l_high = std::max(l, l_high);
 
-  u_low = std::min(u, u_low);
-  u_high = std::max(u, u_high);
+  a_low = std::min(a, a_low);
+  a_high = std::max(a, a_high);
 
-  v_low = std::min(v, v_low);
-  v_high = std::max(v, v_high);
+  b_low = std::min(b2, b_low);
+  b_high = std::max(b2, b_high);
 
-  vision_->setThreshold(0, y_low, y_high, u_low, u_high, v_low, v_high);
+  vision_->setThreshold(0, l_low, l_high, a_low, a_high, b_low, b_high);
 
   std::ostringstream stream;
-  stream << "( " << y_low << ":" << y_high << ", " 
-         << u_low << ":" << u_high << ", "
-         << v_low << ":" << v_high << " ) ";
+  stream << "( " << l_low << ":" << l_high << ", " 
+         << a_low << ":" << a_high << ", "
+         << b_low << ":" << b_high << " ) ";
 
   yuvText_->SetValue(wxString::FromAscii(stream.str().c_str()));
 }
