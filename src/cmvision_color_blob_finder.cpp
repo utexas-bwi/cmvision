@@ -34,7 +34,7 @@
 using namespace color_blob_track;
 
 CMVisionColorBlobFinder::CMVisionColorBlobFinder() :
-	debug_on_(false), width_(0), height_(0), color_filename_(""), lab_image_(NULL), blob_count_(0), vision_(NULL), mean_shift_on_(false), spatial_radius_(0),
+	debug_on_(false), width_(0), height_(0), color_filename_(""), blob_count_(0), vision_(NULL), mean_shift_on_(false), spatial_radius_(0),
 			color_radius_(0)
 {
 }
@@ -50,7 +50,6 @@ CMVisionColorBlobFinder::~CMVisionColorBlobFinder()
 bool CMVisionColorBlobFinder::initialize(ros::NodeHandle &node_handle)
 {
 
-	lab_image_ = NULL;
 	width_ = 0;
 	height_ = 0;
 
@@ -154,12 +153,6 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 
 		blob_message_.image_width = size.width;
 		blob_message_.image_height = size.height;
-
-		if (lab_image_)
-		{
-			delete[] lab_image_;
-		}
-		lab_image_ = new uint8_t[width_ * height_ * 3];
 
 	}
 
