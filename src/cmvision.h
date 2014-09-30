@@ -133,8 +133,7 @@ public:
     char *name;         // color's meaninful name (e.g. ball, goal)
     double merge;       // merge density threshold
     int expected_num;   // expected number of regions (used for merge)
-    int l_low,l_high;   // L,A,B component thresholds
-    int a_low,a_high;
+    int a_low,a_high;   // L,A,B component thresholds
     int b_low,b_high;
   };
 
@@ -151,7 +150,6 @@ public:
   };
 
 protected:
-  unsigned l_class[CMV_COLOR_LEVELS];
   unsigned a_class[CMV_COLOR_LEVELS];
   unsigned b_class[CMV_COLOR_LEVELS];
 
@@ -199,11 +197,9 @@ public:
 
   bool testClassify(rgb * restrict out,image_pixel * restrict image);
   bool getThreshold(int color,
-         int &l_low,int &l_high,
 	 int &a_low,int &a_high,
          int &b_low,int &b_high);
   bool setThreshold(int color,
-         int l_low,int l_high,
 	 int a_low,int a_high,
          int b_low,int b_high);
 

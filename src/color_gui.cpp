@@ -99,8 +99,8 @@ ColorGuiFrame::ColorGuiFrame()
   wxStaticText *rgblabel = new wxStaticText(this, -1, wxT("RGB:"));
   rgbText_ = new wxTextCtrl(this,-1,wxT(""));
 
-  wxStaticText *yuvLabel = new wxStaticText(this, -1, wxT("YUV:"));
-  yuvText_ = new wxTextCtrl(this,-1,wxT(""));
+  wxStaticText *abLabel = new wxStaticText(this, -1, wxT("AB:"));
+  abText_ = new wxTextCtrl(this,-1,wxT(""));
 
   wxBoxSizer *hsizer1 = new wxBoxSizer(wxHORIZONTAL);
   wxBoxSizer *hsizer2 = new wxBoxSizer(wxHORIZONTAL);
@@ -109,8 +109,8 @@ ColorGuiFrame::ColorGuiFrame()
   hsizer2->Add( rgblabel, 0, wxALIGN_CENTER_VERTICAL| wxLEFT, 10);
   hsizer2->Add( rgbText_, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 2);
 
-  hsizer2->Add( yuvLabel, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 10);
-  hsizer2->Add( yuvText_, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 2);
+  hsizer2->Add( abLabel, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 10);
+  hsizer2->Add( abText_, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 2);
   hsizer2->Add(50,1,0);
 
   vsizer->Add(image_panel_, 0, wxEXPAND);
@@ -178,7 +178,7 @@ void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
 
   memcpy(rgb_image_, cvImage->imageData, width_ * height_ * 3);
 
-  // Convert image to YUV color space
+  // Convert image to LAB color space
   cvCvtColor(cvImage, cvImage, CV_RGB2Lab);
   
   memcpy(lab_image_, cvImage->imageData, width_ * height_ * 3);
@@ -241,9 +241,9 @@ void ColorGuiFrame::DrawImage(const sensor_msgs::ImageConstPtr& msg)
 
 void ColorGuiFrame::OnReset(wxCommandEvent &event)
 {
-  vision_->setThreshold(0, 0, 0, 0, 0, 0, 0);
+  vision_->setThreshold(0, 0, 0, 0, 0);
   rgbText_->SetValue(wxString::FromAscii(""));
-  yuvText_->SetValue(wxString::FromAscii(""));
+  abText_->SetValue(wxString::FromAscii(""));
 }
 
 void ColorGuiFrame::OnClick(wxMouseEvent &event)
@@ -268,13 +268,8 @@ void ColorGuiFrame::OnClick(wxMouseEvent &event)
 
   int l_low, l_high, a_low, a_high, b_low, b_high;
 
-  vision_->getThreshold(0, l_low, l_high, a_low, a_high, b_low, b_high);
+  vision_->getThreshold(0, a_low, a_high, b_low, b_high);
 
-  if (l_low == 0 && l_high == 0)
-  {
-    l_low = l;
-    l_high = l;
-  }
   if (a_low == 0 && a_high == 0)
   {
     a_low = a;
@@ -286,23 +281,19 @@ void ColorGuiFrame::OnClick(wxMouseEvent &event)
     b_high = b2;
   }
 
-  l_low = std::min(l, l_low);
-  l_high = std::max(l, l_high);
-
   a_low = std::min(a, a_low);
   a_high = std::max(a, a_high);
 
   b_low = std::min(b2, b_low);
   b_high = std::max(b2, b_high);
 
-  vision_->setThreshold(0, l_low, l_high, a_low, a_high, b_low, b_high);
+  vision_->setThreshold(0, a_low, a_high, b_low, b_high);
 
   std::ostringstream stream;
-  stream << "( " << l_low << ":" << l_high << ", " 
-         << a_low << ":" << a_high << ", "
+  stream << "( " << a_low << ":" << a_high << ", "
          << b_low << ":" << b_high << " ) ";
 
-  yuvText_->SetValue(wxString::FromAscii(stream.str().c_str()));
+  abText_->SetValue(wxString::FromAscii(stream.str().c_str()));
 }
 
 void ColorGuiFrame::OnMouseWheel(wxMouseEvent &event)

@@ -59,7 +59,7 @@ class ColorGuiFrame : public wxFrame
   public: void DrawImage(const sensor_msgs::ImageConstPtr& msg);
 
   private: int width_, height_;
-  private: wxTextCtrl *yuvText_;
+  private: wxTextCtrl *abText_;
   private: wxTextCtrl *rgbText_;
   private: wxPanel *image_panel_;
 

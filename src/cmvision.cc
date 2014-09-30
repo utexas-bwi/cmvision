@@ -106,20 +106,17 @@ void CMVision::classifyFrame(image_pixel * restrict img,unsigned * restrict map)
 // Classifies an image passed in as img, saving bits in the entries
 // of map representing which thresholds that pixel satisfies.
 {
-  int i,m,s;
-  int m1,m2;
+  int i,s;
   image_pixel p;
 
-  unsigned *lclas = l_class; // Ahh, the joys of a compiler that
-  unsigned *aclas = a_class; //   has to consider pointer aliasing
+  unsigned *aclas = a_class;
   unsigned *bclas = b_class;
 
   s = width * height;
 
   for(i=0; i<s; i++){
     p = img[i];
-    m = aclas[p.a] & bclas[p.b];
-    map[i] = m & lclas[p.l];
+    map[i] = aclas[p.a] & bclas[p.b];
   }
 
 }
@@ -610,7 +607,6 @@ int CMVision::mergeRegions()
 
 void CMVision::clear()
 {
-  ZERO(l_class);
   ZERO(a_class);
   ZERO(b_class);
 
@@ -680,7 +676,7 @@ bool CMVision::loadOptions(const char *filename)
   double merge;
   color_info *c;
 
-  int l1,l2,a1,a2,b1,b2;
+  int a1,a2,b1,b2;
   unsigned k;
 
   // Open options file
@@ -689,7 +685,7 @@ bool CMVision::loadOptions(const char *filename)
 
   // Clear out previously set options
   for(i=0; i<CMV_COLOR_LEVELS; i++){
-    l_class[i] = a_class[i] = b_class[i] = 0;
+    a_class[i] = b_class[i] = 0;
   }
   for(i=0; i<CMV_MAX_COLORS; i++){
     if(colors[i].name){
@@ -738,17 +734,15 @@ bool CMVision::loadOptions(const char *filename)
         }
         break;
       case CMV_STATE_THRESH:
-        n = sscanf(buf,"(%d:%d,%d:%d,%d:%d)",&l1,&l2,&a1,&a2,&b1,&b2);
-        if(n == 6){
+        n = sscanf(buf,"(%d:%d,%d:%d)",&a1,&a2,&b1,&b2);
+        if(n == 4){
           // printf("(%d:%d,%d:%d,%d:%d)\n",l1,l2,a1,a2,b1,b2);
           if(i < CMV_MAX_COLORS){
             c = &colors[i];
-            c->l_low = l1;  c->l_high = l2;
             c->a_low = a1;  c->a_high = a2;
             c->b_low = b1;  c->b_high = b2;
 
             k = (1 << i);
-            set_bits(l_class,CMV_COLOR_LEVELS,l1,l2,k);
             set_bits(a_class,CMV_COLOR_LEVELS,a1,a2,k);
             set_bits(b_class,CMV_COLOR_LEVELS,b1,b2,k);
             i++;
@@ -796,8 +790,7 @@ bool CMVision::saveOptions(char *filename)
   i = 0;
   while(colors[i].name){
     c = &colors[i];
-    fprintf(out,"(%3d:%3d,%3d:%3d,%3d:%3d)\n",
-      c->l_low,c->l_high,
+    fprintf(out,"(%3d:%3d,%3d:%3d)\n",
       c->a_low,c->a_high,
       c->b_low,c->b_high);
     i++;
@@ -864,7 +857,6 @@ bool CMVision::testClassify(rgb * restrict out,image_pixel * restrict image)
 }
 
 bool CMVision::getThreshold(int color,
-       int &l_low,int &l_high,
        int &a_low,int &a_high,
        int &b_low,int &b_high)
 {
@@ -873,7 +865,6 @@ bool CMVision::getThreshold(int color,
   if(color<0 || color>=CMV_MAX_COLORS) return(false);
 
   c = &colors[color];
-  l_low = c->l_low;  l_high = c->l_high;
   a_low = c->a_low;  a_high = c->a_high;
   b_low = c->b_low;  b_high = c->b_high;
 
@@ -881,7 +872,6 @@ bool CMVision::getThreshold(int color,
 }
 
 bool CMVision::setThreshold(int color,
-       int l_low,int l_high,
        int a_low,int a_high,
        int b_low,int b_high)
 {
@@ -893,15 +883,12 @@ bool CMVision::setThreshold(int color,
   c = &colors[color];
   k = 1 << color;
 
-  clear_bits(l_class,CMV_COLOR_LEVELS,c->l_low,c->l_high,k);
   clear_bits(a_class,CMV_COLOR_LEVELS,c->a_low,c->a_high,k);
   clear_bits(b_class,CMV_COLOR_LEVELS,c->b_low,c->b_high,k);
 
-  c->l_low = l_low;  c->l_high = l_high;
   c->a_low = a_low;  c->a_high = a_high;
   c->b_low = b_low;  c->b_high = b_high;
 
-  set_bits(l_class,CMV_COLOR_LEVELS,l_low,l_high,k);
   set_bits(a_class,CMV_COLOR_LEVELS,a_low,a_high,k);
   set_bits(b_class,CMV_COLOR_LEVELS,b_low,b_high,k);
 
