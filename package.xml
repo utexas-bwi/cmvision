@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>cmvision</name>
-  <version>0.4.1</version>
+  <version>0.4.2</version>
   <description>
     Node for the Color Machine Vision Project, used for fast color blob detection
   </description>

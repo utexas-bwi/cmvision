@@ -2,8 +2,8 @@
 Changelog for package cmvision
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.4.2 (2015-03-02)
+------------------
 * Merge pull request `#2 <https://github.com/utexas-bwi/cmvision/issues/2>`_ from OSUrobotics/hydro-devel
   Include color name in the blob message.
 * Contributors: Alex Hubers
