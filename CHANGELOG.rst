@@ -2,6 +2,12 @@
 Changelog for package cmvision
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#2 <https://github.com/utexas-bwi/cmvision/issues/2>`_ from OSUrobotics/hydro-devel
+  Include color name in the blob message.
+* Contributors: Alex Hubers
+
 0.4.1 (2013-09-03)
 ------------------
 * fixed missing fltk dependency. closes `#1 <https://github.com/utexas-bwi/cmvision/issues/1>`_
