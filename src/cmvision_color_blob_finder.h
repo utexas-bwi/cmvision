@@ -75,7 +75,6 @@ private:
 	uint16_t width_;
 	uint16_t height_;
 	std::string color_filename_;
-	uint8_t *uyvy_image_;
 
 	unsigned int blob_count_;
 

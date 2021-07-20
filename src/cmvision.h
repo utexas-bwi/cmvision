@@ -82,19 +82,11 @@ Options File Format: (RGB merge name)
 #define NULL (0)
 #endif
 
-struct yuv{
-  unsigned char y,u,v;
+struct lab{
+  unsigned char l,a,b;
 };
 
-struct yuv422{
-  unsigned char y1,u,y2,v;
-};
-
-struct uyvy{
-  unsigned char u,y1,v,y2;
-};
-
-typedef struct uyvy image_pixel;
+typedef struct lab image_pixel;
 
 #ifndef RGB_STRUCT
 #define RGB_STRUCT
@@ -120,7 +112,7 @@ public:
     int area;           // occupied area in pixels
     int x1,y1,x2,y2;    // bounding box (x1,y1) - (x2,y2)
     float cen_x,cen_y;  // centroid
-    yuv average;        // average color (if CMV_COLOR_AVERAGES enabled)
+    lab average;        // average color (if CMV_COLOR_AVERAGES enabled)
 
     int sum_x,sum_y,sum_z; // temporaries for centroid and avg color
     // int area_check; // DEBUG ONLY
@@ -141,9 +133,8 @@ public:
     char *name;         // color's meaninful name (e.g. ball, goal)
     double merge;       // merge density threshold
     int expected_num;   // expected number of regions (used for merge)
-    int y_low,y_high;   // Y,U,V component thresholds
-    int u_low,u_high;
-    int v_low,v_high;
+    int a_low,a_high;   // L,A,B component thresholds
+    int b_low,b_high;
   };
 
   struct point{
@@ -159,9 +150,8 @@ public:
   };
 
 protected:
-  unsigned y_class[CMV_COLOR_LEVELS];
-  unsigned u_class[CMV_COLOR_LEVELS];
-  unsigned v_class[CMV_COLOR_LEVELS];
+  unsigned a_class[CMV_COLOR_LEVELS];
+  unsigned b_class[CMV_COLOR_LEVELS];
 
   region region_table[CMV_MAX_REGIONS];
   region *region_list[CMV_MAX_COLORS];
@@ -207,13 +197,11 @@ public:
 
   bool testClassify(rgb * restrict out,image_pixel * restrict image);
   bool getThreshold(int color,
-         int &y_low,int &y_high,
-	 int &u_low,int &u_high,
-         int &v_low,int &v_high);
+	 int &a_low,int &a_high,
+         int &b_low,int &b_high);
   bool setThreshold(int color,
-         int y_low,int y_high,
-	 int u_low,int u_high,
-         int v_low,int v_high);
+	 int a_low,int a_high,
+         int b_low,int b_high);
 
   unsigned *getMap()
     {return(map);}

@@ -34,7 +34,7 @@
 using namespace color_blob_track;
 
 CMVisionColorBlobFinder::CMVisionColorBlobFinder() :
-	debug_on_(false), width_(0), height_(0), color_filename_(""), uyvy_image_(NULL), blob_count_(0), vision_(NULL), mean_shift_on_(false), spatial_radius_(0),
+	debug_on_(false), width_(0), height_(0), color_filename_(""), blob_count_(0), vision_(NULL), mean_shift_on_(false), spatial_radius_(0),
 			color_radius_(0)
 {
 }
@@ -50,7 +50,6 @@ CMVisionColorBlobFinder::~CMVisionColorBlobFinder()
 bool CMVisionColorBlobFinder::initialize(ros::NodeHandle &node_handle)
 {
 
-	uyvy_image_ = NULL;
 	width_ = 0;
 	height_ = 0;
 
@@ -106,7 +105,7 @@ bool CMVisionColorBlobFinder::initialize(ros::NodeHandle &node_handle)
 
 void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 {
-	IplImage cvImageRef, *cvImage;
+	IplImage cvImageRef, *cvImage, *debug_img_;
 	CvSize size;
 
 	const sensor_msgs::Image img = *msg;
@@ -118,7 +117,7 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 	ros::WallTime startt = ros::WallTime::now();
 
 	// Get the image as and RGB image
-        cv_bridge::CvImagePtr image = cv_bridge::toCvCopy(msg);
+        cv_bridge::CvImagePtr image = cv_bridge::toCvCopy(msg, "bgr8");
         cvImageRef = IplImage(image->image);
         cvImage = &cvImageRef;
         
@@ -155,12 +154,6 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 		blob_message_.image_width = size.width;
 		blob_message_.image_height = size.height;
 
-		if (uyvy_image_)
-		{
-			delete[] uyvy_image_;
-		}
-		uyvy_image_ = new uint8_t[width_ * height_ * 2];
-
 	}
 
 	// Smooth the image, if turned on
@@ -169,11 +162,14 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 		cvPyrMeanShiftFiltering(cvImage, cvImage, spatial_radius_, color_radius_);
 	}
 
-	// Convert image to YUV color space
-	rgb2uyvy((unsigned char *) cvImage->imageData, uyvy_image_, width_ * height_);
+	if (debug_on_) {
+		debug_img_ = cvCloneImage(cvImage);
+	}
+
+	cvCvtColor(cvImage, cvImage, CV_BGR2Lab);
 
 	// Find the color blobs
-	if (!vision_->processFrame(reinterpret_cast<image_pixel*> (uyvy_image_)))
+	if (!vision_->processFrame(reinterpret_cast<image_pixel*> (cvImage->imageData)))
 	{
 		ROS_ERROR("Frame error.");
 		return;
@@ -203,7 +199,7 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 
 			if (debug_on_)
 			{
-				cvRectangle(cvImage, cvPoint(r->x1, r->y1), cvPoint(r->x2, r->y2), CV_RGB(c.red, c.green, c.blue));
+				cvRectangle(debug_img_, cvPoint(r->x1, r->y1), cvPoint(r->x2, r->y2), CV_RGB(c.red, c.green, c.blue));
 			}
 
 			blob_message_.blobs[blob_count_].name = name;
@@ -227,8 +223,11 @@ void CMVisionColorBlobFinder::imageCB(const sensor_msgs::ImageConstPtr& msg)
 
 	if (debug_on_)
 	{
-		cvShowImage("Image", cvImage);
+		cvShowImage("Image", debug_img_);
+
 		cvWaitKey(3);
+
+		cvReleaseImage(&debug_img_);
 	}
 
 	blob_message_.blob_count = blob_count_;

@@ -106,33 +106,19 @@ void CMVision::classifyFrame(image_pixel * restrict img,unsigned * restrict map)
 // Classifies an image passed in as img, saving bits in the entries
 // of map representing which thresholds that pixel satisfies.
 {
-  int i,m,s;
-  int m1,m2;
+  int i,s;
   image_pixel p;
 
-  unsigned *uclas = u_class; // Ahh, the joys of a compiler that
-  unsigned *vclas = v_class; //   has to consider pointer aliasing
-  unsigned *yclas = y_class;
+  unsigned *aclas = a_class;
+  unsigned *bclas = b_class;
 
   s = width * height;
 
-  if(options & CMV_DUAL_THRESHOLD){
-    for(i=0; i<s; i+=2){
-      p = img[i/2];
-      m = uclas[p.u] & vclas[p.v];
-      m1 = m & yclas[p.y1];
-      m2 = m & yclas[p.y2];
-      map[i + 0] = m1 | (m1 >> 16);
-      map[i + 1] = m2 | (m2 >> 16);
-    }
-  }else{
-    for(i=0; i<s; i+=2){
-      p = img[i/2];
-      m = uclas[p.u] & vclas[p.v];
-      map[i + 0] = m & yclas[p.y1];
-      map[i + 1] = m & yclas[p.y2];
-    }
+  for(i=0; i<s; i++){
+    p = img[i];
+    map[i] = aclas[p.a] & bclas[p.b];
   }
+
 }
 
 int CMVision::encodeRuns(rle * restrict out,unsigned * restrict map)
@@ -267,7 +253,7 @@ int CMVision::extractRegions(region * restrict reg,rle * restrict rmap,int num)
   int x,y,i;
   int b,n,a;
   rle r;
-  yuv black = {0,0,0};
+  lab black = {0,0,0};
 
   x = y = n = 0;
   for(i=0; i<num; i++){
@@ -333,13 +319,13 @@ void CMVision::calcAverageColors(region * restrict reg,int num_reg,
 // Implemented as a single pass over the image, and a second pass over
 // the regions.
 {
-  int i,j,x,l;
+  int i,j,x,l;  // TODO: This needs testing after conversion to lab
   image_pixel p;
   rle r;
-  int sum_y,sum_u,sum_v;
+  int sum_l,sum_a,sum_b;
   int b,xs;
 
-  yuv avg;
+  lab avg;
   int area;
 
   // clear out temporaries
@@ -362,43 +348,43 @@ void CMVision::calcAverageColors(region * restrict reg,int num_reg,
       x += l;
     }else{
       xs = x;
-      p = img[x / 2];
+      p = img[x];
 
       if(x & 1){
-        sum_y = p.y2;
-        sum_u = p.u;
-        sum_v = p.v;
+        sum_l = p.l;
+        sum_a = p.a;
+        sum_b = p.b;
         // area = 1;
         x++;
         l--;
       }else{
-        sum_y = sum_u = sum_v = 0;
+        sum_l = sum_a = sum_b = 0;
         area = 0;
       }
 
-      for(j=0; j<l/2; j++){
-        p = img[x / 2];
-        sum_y += p.y1 + p.y2;
-        sum_u += 2 * p.u;
-        sum_v += 2 * p.v;
-        x+=2;
+      for(j=0; j<l; j++){
+        p = img[x];
+        sum_l += p.l;
+        sum_a += p.a;
+        sum_b += p.b;
+        x+=1;
         // area += 2;
       }
 
       if(l & 1){
         x++;
-        p = img[x / 2];
-        sum_y += p.y1;
-        sum_u += p.u;
-        sum_v += p.v;
+        p = img[x];
+        sum_l += p.l;
+        sum_a += p.a;
+        sum_b += p.b;
         // area++;
       }
 
       // add sums to region
       b = r.parent;
-      reg[b].sum_x += sum_y;
-      reg[b].sum_y += sum_u;
-      reg[b].sum_z += sum_v;
+      reg[b].sum_x += sum_l;
+      reg[b].sum_y += sum_a;
+      reg[b].sum_z += sum_b;
       // reg[b].area_check += area;
 
       /*
@@ -418,9 +404,9 @@ void CMVision::calcAverageColors(region * restrict reg,int num_reg,
   // Divide sums by area to calculate average colors
   for(i=0; i<num_reg; i++){
     area = reg[i].area;
-    avg.y = reg[i].sum_x / area;
-    avg.u = reg[i].sum_y / area;
-    avg.v = reg[i].sum_z / area;
+    avg.l = reg[i].sum_x / area;
+    avg.a = reg[i].sum_y / area;
+    avg.b = reg[i].sum_z / area;
 
     /*
     if(reg[i].area != reg[i].area_check){
@@ -621,9 +607,8 @@ int CMVision::mergeRegions()
 
 void CMVision::clear()
 {
-  ZERO(y_class);
-  ZERO(u_class);
-  ZERO(v_class);
+  ZERO(a_class);
+  ZERO(b_class);
 
   ZERO(region_list);
   ZERO(region_count);
@@ -691,7 +676,7 @@ bool CMVision::loadOptions(const char *filename)
   double merge;
   color_info *c;
 
-  int y1,y2,u1,u2,v1,v2;
+  int a1,a2,b1,b2;
   unsigned k;
 
   // Open options file
@@ -700,7 +685,7 @@ bool CMVision::loadOptions(const char *filename)
 
   // Clear out previously set options
   for(i=0; i<CMV_COLOR_LEVELS; i++){
-    y_class[i] = u_class[i] = v_class[i] = 0;
+    a_class[i] = b_class[i] = 0;
   }
   for(i=0; i<CMV_MAX_COLORS; i++){
     if(colors[i].name){
@@ -749,19 +734,17 @@ bool CMVision::loadOptions(const char *filename)
         }
         break;
       case CMV_STATE_THRESH:
-        n = sscanf(buf,"(%d:%d,%d:%d,%d:%d)",&y1,&y2,&u1,&u2,&v1,&v2);
-        if(n == 6){
-          // printf("(%d:%d,%d:%d,%d:%d)\n",y1,y2,u1,u2,v1,v2);
+        n = sscanf(buf,"(%d:%d,%d:%d)",&a1,&a2,&b1,&b2);
+        if(n == 4){
+          // printf("(%d:%d,%d:%d,%d:%d)\n",l1,l2,a1,a2,b1,b2);
           if(i < CMV_MAX_COLORS){
             c = &colors[i];
-            c->y_low = y1;  c->y_high = y2;
-            c->u_low = u1;  c->u_high = u2;
-            c->v_low = v1;  c->v_high = v2;
+            c->a_low = a1;  c->a_high = a2;
+            c->b_low = b1;  c->b_high = b2;
 
             k = (1 << i);
-            set_bits(y_class,CMV_COLOR_LEVELS,y1,y2,k);
-            set_bits(u_class,CMV_COLOR_LEVELS,u1,u2,k);
-            set_bits(v_class,CMV_COLOR_LEVELS,v1,v2,k);
+            set_bits(a_class,CMV_COLOR_LEVELS,a1,a2,k);
+            set_bits(b_class,CMV_COLOR_LEVELS,b1,b2,k);
             i++;
 	  }else{
 	    printf("CMVision: Too many thresholds.\n");
@@ -775,7 +758,7 @@ bool CMVision::loadOptions(const char *filename)
 
   /*
   for(i=0; i<CMV_COLOR_LEVELS; i++){
-    printf("%08X %08X %08X\n",y_class[i],u_class[i],v_class[i]);
+    printf("%08X %08X %08X\n",l_class[i],a_class[i],b_class[i]);
   }
   */
 
@@ -807,10 +790,9 @@ bool CMVision::saveOptions(char *filename)
   i = 0;
   while(colors[i].name){
     c = &colors[i];
-    fprintf(out,"(%3d:%3d,%3d:%3d,%3d:%3d)\n",
-      c->y_low,c->y_high,
-      c->u_low,c->u_high,
-      c->v_low,c->v_high);
+    fprintf(out,"(%3d:%3d,%3d:%3d)\n",
+      c->a_low,c->a_high,
+      c->b_low,c->b_high);
     i++;
   }
 
@@ -875,26 +857,23 @@ bool CMVision::testClassify(rgb * restrict out,image_pixel * restrict image)
 }
 
 bool CMVision::getThreshold(int color,
-       int &y_low,int &y_high,
-       int &u_low,int &u_high,
-       int &v_low,int &v_high)
+       int &a_low,int &a_high,
+       int &b_low,int &b_high)
 {
   color_info *c;
 
   if(color<0 || color>=CMV_MAX_COLORS) return(false);
 
   c = &colors[color];
-  y_low = c->y_low;  y_high = c->y_high;
-  u_low = c->u_low;  u_high = c->u_high;
-  v_low = c->v_low;  v_high = c->v_high;
+  a_low = c->a_low;  a_high = c->a_high;
+  b_low = c->b_low;  b_high = c->b_high;
 
   return(true);
 }
 
 bool CMVision::setThreshold(int color,
-       int y_low,int y_high,
-       int u_low,int u_high,
-       int v_low,int v_high)
+       int a_low,int a_high,
+       int b_low,int b_high)
 {
   color_info *c;
   unsigned k;
@@ -904,17 +883,14 @@ bool CMVision::setThreshold(int color,
   c = &colors[color];
   k = 1 << color;
 
-  clear_bits(y_class,CMV_COLOR_LEVELS,c->y_low,c->y_high,k);
-  clear_bits(u_class,CMV_COLOR_LEVELS,c->u_low,c->u_high,k);
-  clear_bits(v_class,CMV_COLOR_LEVELS,c->v_low,c->v_high,k);
+  clear_bits(a_class,CMV_COLOR_LEVELS,c->a_low,c->a_high,k);
+  clear_bits(b_class,CMV_COLOR_LEVELS,c->b_low,c->b_high,k);
 
-  c->y_low = y_low;  c->y_high = y_high;
-  c->u_low = u_low;  c->u_high = u_high;
-  c->v_low = v_low;  c->v_high = v_high;
+  c->a_low = a_low;  c->a_high = a_high;
+  c->b_low = b_low;  c->b_high = b_high;
 
-  set_bits(y_class,CMV_COLOR_LEVELS,y_low,y_high,k);
-  set_bits(u_class,CMV_COLOR_LEVELS,u_low,u_high,k);
-  set_bits(v_class,CMV_COLOR_LEVELS,v_low,v_high,k);
+  set_bits(a_class,CMV_COLOR_LEVELS,a_low,a_high,k);
+  set_bits(b_class,CMV_COLOR_LEVELS,b_low,b_high,k);
 
   return(true);
 }
